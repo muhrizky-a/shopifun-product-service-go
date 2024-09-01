@@ -69,14 +69,39 @@ func (r *shopRepository) GetShop(ctx context.Context, req *entity.GetShopRequest
 	return resp, nil
 }
 
+func (r *shopRepository) VerifyShopExists(ctx context.Context, req *entity.GetShopRequest) (*entity.GetExistingShopResponse, error) {
+	var resp = new(entity.GetExistingShopResponse)
+	// Your code here
+	query := `
+		SELECT id, user_id
+		FROM shops
+		WHERE
+			deleted_at IS NULL
+			AND id = ?
+	`
+
+	err := r.db.QueryRowxContext(ctx, r.db.Rebind(query), req.Id).StructScan(resp)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Error().Err(err).Any("payload", req).Msg("repository::VerifyShopExists - Shop not found")
+			return nil, errmsg.NewCustomErrors(404, errmsg.WithMessage("Toko tidak ditemukan"))
+		} else {
+			log.Error().Err(err).Any("payload", req).Msg("repository::VerifyShopExists - Failed to get shop")
+			return nil, err
+		}
+	}
+
+	return resp, nil
+}
+
 func (r *shopRepository) DeleteShop(ctx context.Context, req *entity.DeleteShopRequest) error {
 	query := `
 		UPDATE shops
 		SET deleted_at = NOW()
-		WHERE id = ? AND user_id = ?
+		WHERE id = ?
 	`
 
-	_, err := r.db.ExecContext(ctx, r.db.Rebind(query), req.Id, req.UserId)
+	_, err := r.db.ExecContext(ctx, r.db.Rebind(query), req.Id)
 	if err != nil {
 		log.Error().Err(err).Any("payload", req).Msg("repository::DeleteShop - Failed to delete shop")
 		return err
@@ -94,7 +119,6 @@ func (r *shopRepository) UpdateShop(ctx context.Context, req *entity.UpdateShopR
 		WHERE
 			deleted_at IS NULL
 			AND id = ?
-			AND user_id = ?
 		RETURNING id
 	`
 
@@ -102,8 +126,7 @@ func (r *shopRepository) UpdateShop(ctx context.Context, req *entity.UpdateShopR
 		req.Name,
 		req.Description,
 		req.Terms,
-		req.Id,
-		req.UserId).Scan(&resp.Id)
+		req.Id).Scan(&resp.Id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Error().Err(err).Any("payload", req).Msg("repository::UpdateShop - Shop not found")

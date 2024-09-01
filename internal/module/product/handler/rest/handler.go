@@ -91,13 +91,15 @@ func (h *productHandler) GetProduct(c *fiber.Ctx) error {
 
 func (h *productHandler) DeleteProduct(c *fiber.Ctx) error {
 	var (
-		req = new(entity.DeleteProductRequest)
-		ctx = c.Context()
-		v   = adapter.Adapters.Validator
-		// l   = middleware.GetLocals(c)
+		req           = new(entity.DeleteProductRequest)
+		reqGetProduct = new(entity.GetProductRequest)
+		ctx           = c.Context()
+		v             = adapter.Adapters.Validator
+		l             = middleware.GetLocals(c)
 	)
 
 	req.Id = c.Params("id")
+	OwnerId := l.UserId
 
 	if err := v.Validate(req); err != nil {
 		log.Warn().Err(err).Any("payload", req).Msg("handler::DeleteProduct - Validate request body")
@@ -105,7 +107,21 @@ func (h *productHandler) DeleteProduct(c *fiber.Ctx) error {
 		return c.Status(code).JSON(response.Error(errs))
 	}
 
-	err := h.service.DeleteProduct(ctx, req)
+	reqGetProduct.Id = req.Id
+	respExistingProduct, err := h.service.VerifyProductExists(ctx, reqGetProduct)
+	if err != nil {
+		code, errs := errmsg.Errors[error](err)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	if respExistingProduct.UserId != OwnerId {
+		log.Warn().Err(err).Msg("handler::DeleteProduct - Unauthorized")
+		return c.Status(403).JSON(response.Error(
+			"Terlarang: anda tidak diizinkan untuk mengakses resource ini",
+		))
+	}
+
+	err = h.service.DeleteProduct(ctx, req)
 	if err != nil {
 		code, errs := errmsg.Errors[error](err)
 		return c.Status(code).JSON(response.Error(errs))
@@ -116,10 +132,11 @@ func (h *productHandler) DeleteProduct(c *fiber.Ctx) error {
 
 func (h *productHandler) UpdateProduct(c *fiber.Ctx) error {
 	var (
-		req = new(entity.UpdateProductRequest)
-		ctx = c.Context()
-		v   = adapter.Adapters.Validator
-		// l   = middleware.GetLocals(c)
+		req           = new(entity.UpdateProductRequest)
+		reqGetProduct = new(entity.GetProductRequest)
+		ctx           = c.Context()
+		v             = adapter.Adapters.Validator
+		l             = middleware.GetLocals(c)
 	)
 
 	if err := c.BodyParser(req); err != nil {
@@ -128,11 +145,28 @@ func (h *productHandler) UpdateProduct(c *fiber.Ctx) error {
 	}
 
 	req.Id = c.Params("id")
+	OwnerId := l.UserId
 
 	if err := v.Validate(req); err != nil {
 		log.Warn().Err(err).Any("payload", req).Msg("handler::UpdateProduct - Validate request body")
 		code, errs := errmsg.Errors(err, req)
 		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	reqGetProduct.Id = req.Id
+	respExistingProduct, err := h.service.VerifyProductExists(ctx, reqGetProduct)
+	if err != nil {
+		code, errs := errmsg.Errors[error](err)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	log.Warn().Msg(respExistingProduct.Id + ", userid:" + respExistingProduct.UserId + ", shopid:" + respExistingProduct.ShopId)
+
+	if respExistingProduct.UserId != OwnerId {
+		log.Warn().Err(err).Msg("handler::UpdateProduct - Unauthorized")
+		return c.Status(403).JSON(response.Error(
+			"Terlarang: anda tidak diizinkan untuk mengakses resource ini",
+		))
 	}
 
 	resp, err := h.service.UpdateProduct(ctx, req)

@@ -18,6 +18,11 @@ type GetShopRequest struct {
 	Id string `validate:"uuid" db:"id"`
 }
 
+type GetExistingShopResponse struct {
+	Id     string `json:"id" db:"id"`
+	UserId string `json:"user_id" db:"user_id"`
+}
+
 type GetShopResponse struct {
 	Name        string `json:"name" db:"name"`
 	Description string `json:"description" db:"description"`
@@ -25,14 +30,10 @@ type GetShopResponse struct {
 }
 
 type DeleteShopRequest struct {
-	UserId string `prop:"user_id" validate:"uuid" db:"user_id"`
-
 	Id string `validate:"uuid" db:"id"`
 }
 
 type UpdateShopRequest struct {
-	UserId string `prop:"user_id" validate:"uuid" db:"user_id"`
-
 	Id          string `params:"id" validate:"uuid" db:"id"`
 	Name        string `json:"name" validate:"required" db:"name"`
 	Description string `json:"description" validate:"required" db:"description"`

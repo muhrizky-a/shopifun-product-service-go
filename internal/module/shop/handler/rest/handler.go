@@ -94,12 +94,13 @@ func (h *shopHandler) GetShop(c *fiber.Ctx) error {
 
 func (h *shopHandler) DeleteShop(c *fiber.Ctx) error {
 	var (
-		req = new(entity.DeleteShopRequest)
-		ctx = c.Context()
-		v   = adapter.Adapters.Validator
-		l   = middleware.GetLocals(c)
+		req        = new(entity.DeleteShopRequest)
+		reqGetShop = new(entity.GetShopRequest)
+		ctx        = c.Context()
+		v          = adapter.Adapters.Validator
+		l          = middleware.GetLocals(c)
 	)
-	req.UserId = l.UserId
+	OwnerId := l.UserId
 	req.Id = c.Params("id")
 
 	if err := v.Validate(req); err != nil {
@@ -108,7 +109,21 @@ func (h *shopHandler) DeleteShop(c *fiber.Ctx) error {
 		return c.Status(code).JSON(response.Error(errs))
 	}
 
-	err := h.service.DeleteShop(ctx, req)
+	reqGetShop.Id = req.Id
+	respExistingShop, err := h.service.VerifyShopExists(ctx, reqGetShop)
+	if err != nil {
+		code, errs := errmsg.Errors[error](err)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	if respExistingShop.UserId != OwnerId {
+		log.Warn().Err(err).Msg("handler::UpdateShop - Unauthorized")
+		return c.Status(403).JSON(response.Error(
+			"Terlarang: anda tidak diizinkan untuk mengakses resource ini",
+		))
+	}
+
+	err = h.service.DeleteShop(ctx, req)
 	if err != nil {
 		code, errs := errmsg.Errors[error](err)
 		return c.Status(code).JSON(response.Error(errs))
@@ -119,10 +134,11 @@ func (h *shopHandler) DeleteShop(c *fiber.Ctx) error {
 
 func (h *shopHandler) UpdateShop(c *fiber.Ctx) error {
 	var (
-		req = new(entity.UpdateShopRequest)
-		ctx = c.Context()
-		v   = adapter.Adapters.Validator
-		l   = middleware.GetLocals(c)
+		req        = new(entity.UpdateShopRequest)
+		reqGetShop = new(entity.GetShopRequest)
+		ctx        = c.Context()
+		v          = adapter.Adapters.Validator
+		l          = middleware.GetLocals(c)
 	)
 
 	if err := c.BodyParser(req); err != nil {
@@ -130,13 +146,27 @@ func (h *shopHandler) UpdateShop(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response.Error(err))
 	}
 
-	req.UserId = l.UserId
+	OwnerId := l.UserId
 	req.Id = c.Params("id")
 
 	if err := v.Validate(req); err != nil {
 		log.Warn().Err(err).Any("payload", req).Msg("handler::UpdateShop - Validate request body")
 		code, errs := errmsg.Errors(err, req)
 		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	reqGetShop.Id = req.Id
+	respExistingShop, err := h.service.VerifyShopExists(ctx, reqGetShop)
+	if err != nil {
+		code, errs := errmsg.Errors[error](err)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	if respExistingShop.UserId != OwnerId {
+		log.Warn().Err(err).Msg("handler::UpdateShop - Unauthorized")
+		return c.Status(403).JSON(response.Error(
+			"Terlarang: anda tidak diizinkan untuk mengakses resource ini",
+		))
 	}
 
 	resp, err := h.service.UpdateShop(ctx, req)

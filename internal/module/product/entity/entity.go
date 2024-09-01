@@ -20,6 +20,12 @@ type GetProductRequest struct {
 	Id string `validate:"uuid" db:"id"`
 }
 
+type GetExistingProductResponse struct {
+	Id     string `json:"id" db:"id"`
+	UserId string `json:"user_id" db:"user_id"`
+	ShopId string `json:"shop_id" db:"shop_id"`
+}
+
 type GetProductItem struct {
 	Name         string `json:"name" db:"name"`
 	Description  string `json:"description" db:"description"`

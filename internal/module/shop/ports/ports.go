@@ -8,6 +8,7 @@ import (
 type ShopRepository interface {
 	CreateShop(ctx context.Context, req *entity.CreateShopRequest) (*entity.CreateShopResponse, error)
 	GetShop(ctx context.Context, req *entity.GetShopRequest) (*entity.GetShopResponse, error)
+	VerifyShopExists(ctx context.Context, req *entity.GetShopRequest) (*entity.GetExistingShopResponse, error)
 	DeleteShop(ctx context.Context, req *entity.DeleteShopRequest) error
 	UpdateShop(ctx context.Context, req *entity.UpdateShopRequest) (*entity.UpdateShopResponse, error)
 	GetShops(ctx context.Context, req *entity.ShopsRequest) (*entity.ShopsResponse, error)
@@ -16,6 +17,7 @@ type ShopRepository interface {
 type ShopService interface {
 	CreateShop(ctx context.Context, req *entity.CreateShopRequest) (*entity.CreateShopResponse, error)
 	GetShop(ctx context.Context, req *entity.GetShopRequest) (*entity.GetShopResponse, error)
+	VerifyShopExists(ctx context.Context, req *entity.GetShopRequest) (*entity.GetExistingShopResponse, error)
 	DeleteShop(ctx context.Context, req *entity.DeleteShopRequest) error
 	UpdateShop(ctx context.Context, req *entity.UpdateShopRequest) (*entity.UpdateShopResponse, error)
 	GetShops(ctx context.Context, req *entity.ShopsRequest) (*entity.ShopsResponse, error)

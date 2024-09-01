@@ -91,6 +91,38 @@ func (r *productRepository) GetProduct(ctx context.Context, req *entity.GetProdu
 	return resp, nil
 }
 
+func (r *productRepository) VerifyProductExists(ctx context.Context, req *entity.GetProductRequest) (*entity.GetExistingProductResponse, error) {
+	var resp = new(entity.GetExistingProductResponse)
+
+	// Your code here
+	query := `
+		SELECT
+			p.id,
+			p.shop_id,
+			s.user_id
+		FROM products p
+		LEFT JOIN
+			shops s ON p.shop_id = s.id
+		WHERE
+			p.deleted_at IS NULL
+			AND s.deleted_at IS NULL
+			AND p.id = ?
+	`
+
+	err := r.db.QueryRowxContext(ctx, r.db.Rebind(query), req.Id).StructScan(resp)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Error().Err(err).Any("payload", req).Msg("repository::VerifyProductExists - Product not found")
+			return nil, errmsg.NewCustomErrors(404, errmsg.WithMessage("Produk tidak ditemukan"))
+		} else {
+			log.Error().Err(err).Any("payload", req).Msg("repository::VerifyProductExists - Failed to get product")
+			return nil, err
+		}
+	}
+
+	return resp, nil
+}
+
 func (r *productRepository) DeleteProduct(ctx context.Context, req *entity.DeleteProductRequest) error {
 	query := `
 		UPDATE products

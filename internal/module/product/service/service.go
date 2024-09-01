@@ -25,6 +25,9 @@ func (s *productService) CreateProduct(ctx context.Context, req *entity.CreatePr
 func (s *productService) GetProduct(ctx context.Context, req *entity.GetProductRequest) (*entity.GetProductResponse, error) {
 	return s.repo.GetProduct(ctx, req)
 }
+func (s *productService) VerifyProductExists(ctx context.Context, req *entity.GetProductRequest) (*entity.GetExistingProductResponse, error) {
+	return s.repo.VerifyProductExists(ctx, req)
+}
 
 func (s *productService) DeleteProduct(ctx context.Context, req *entity.DeleteProductRequest) error {
 	return s.repo.DeleteProduct(ctx, req)
