@@ -3,7 +3,9 @@ package repository
 import (
 	"codebase-app/internal/module/shop/entity"
 	"codebase-app/internal/module/shop/ports"
+	"codebase-app/pkg/errmsg"
 	"context"
+	"database/sql"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -48,13 +50,20 @@ func (r *shopRepository) GetShop(ctx context.Context, req *entity.GetShopRequest
 	query := `
 		SELECT name, description, terms
 		FROM shops
-		WHERE id = ?
+		WHERE
+			deleted_at IS NULL
+			AND id = ?
 	`
 
 	err := r.db.QueryRowxContext(ctx, r.db.Rebind(query), req.Id).StructScan(resp)
 	if err != nil {
-		log.Error().Err(err).Any("payload", req).Msg("repository::GetShop - Failed to get shop")
-		return nil, err
+		if err == sql.ErrNoRows {
+			log.Error().Err(err).Any("payload", req).Msg("repository::GetShop - Shop not found")
+			return nil, errmsg.NewCustomErrors(404, errmsg.WithMessage("Toko tidak ditemukan"))
+		} else {
+			log.Error().Err(err).Any("payload", req).Msg("repository::GetShop - Failed to get shop")
+			return nil, err
+		}
 	}
 
 	return resp, nil
@@ -82,7 +91,10 @@ func (r *shopRepository) UpdateShop(ctx context.Context, req *entity.UpdateShopR
 	query := `
 		UPDATE shops
 		SET name = ?, description = ?, terms = ?, updated_at = NOW()
-		WHERE id = ? AND user_id = ?
+		WHERE
+			deleted_at IS NULL
+			AND id = ?
+			AND user_id = ?
 		RETURNING id
 	`
 
@@ -93,8 +105,13 @@ func (r *shopRepository) UpdateShop(ctx context.Context, req *entity.UpdateShopR
 		req.Id,
 		req.UserId).Scan(&resp.Id)
 	if err != nil {
-		log.Error().Err(err).Any("payload", req).Msg("repository::UpdateShop - Failed to update shop")
-		return nil, err
+		if err == sql.ErrNoRows {
+			log.Error().Err(err).Any("payload", req).Msg("repository::UpdateShop - Shop not found")
+			return nil, errmsg.NewCustomErrors(404, errmsg.WithMessage("Toko tidak ditemukan"))
+		} else {
+			log.Error().Err(err).Any("payload", req).Msg("repository::UpdateShop - Failed to update shop")
+			return nil, err
+		}
 	}
 
 	return resp, nil
