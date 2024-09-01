@@ -48,21 +48,10 @@ func (r *productRepository) CreateProduct(ctx context.Context, req *entity.Creat
 }
 
 func (r *productRepository) GetProduct(ctx context.Context, req *entity.GetProductRequest) (*entity.GetProductResponse, error) {
-	var resp = new(entity.GetProductResponse)
-	// var (
-	// 	resp         = new(entity.GetProductResponse)
-	// 	categoryResp = new(entity.CategoryResponse)
-	// )
-	// type dao struct {
-	// 	TotalData int `db:"total_data"`
-	// 	entity.ProductItem
-	// }
-
-	// var (
-	// 	resp = new(entity.ProductsResponse)
-	// 	data = make([]dao, 0, req.Paginate)
-	// )
-	// resp.Items = make([]entity.ProductItem, 0, req.Paginate)
+	var (
+		item = new(entity.GetProductItem)
+		resp = new(entity.GetProductResponse)
+	)
 
 	// Your code here
 	query := `
@@ -81,9 +70,7 @@ func (r *productRepository) GetProduct(ctx context.Context, req *entity.GetProdu
 			AND p.id = ?
 	`
 
-	err := r.db.QueryRowxContext(ctx, r.db.Rebind(query), req.Id).StructScan(resp)
-	// err := r.db.QueryRowxContext(ctx, r.db.Rebind(query), req.Id)
-	// err := r.db.SelectContext(ctx, $data, r.db.Rebind(query),req.Id)
+	err := r.db.QueryRowxContext(ctx, r.db.Rebind(query), req.Id).StructScan(item)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Error().Err(err).Any("payload", req).Msg("repository::GetProduct - Product not found")
@@ -94,7 +81,12 @@ func (r *productRepository) GetProduct(ctx context.Context, req *entity.GetProdu
 		}
 	}
 
-	// resp.Category = categoryResp
+	resp.Name = item.Name
+	resp.Description = item.Description
+	resp.Price = item.Price
+	resp.Stock = item.Stock
+	resp.Category.CategoryId = item.CategoryId
+	resp.Category.CategoryName = item.CategoryName
 
 	return resp, nil
 }

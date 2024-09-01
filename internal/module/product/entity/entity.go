@@ -20,19 +20,26 @@ type GetProductRequest struct {
 	Id string `validate:"uuid" db:"id"`
 }
 
-type GetProductResponse struct {
-	Name        string `json:"name" db:"name"`
-	Description string `json:"description" db:"description"`
-	Price       int    `json:"price" validate:"required" db:"price"`
-	Stock       int    `json:"stock" validate:"required" db:"stock"`
-	// Category     CategoryResponse `json:"category"`
+type GetProductItem struct {
+	Name         string `json:"name" db:"name"`
+	Description  string `json:"description" db:"description"`
+	Price        int    `json:"price" validate:"required" db:"price"`
+	Stock        int    `json:"stock" validate:"required" db:"stock"`
 	CategoryId   string `json:"category_id" validate:"required" db:"category_id"`
 	CategoryName string `json:"category_name" validate:"required" db:"category_name"`
 }
 
-type CategoryResponse struct {
+type CategoryItem struct {
 	CategoryId   string `json:"id" validate:"required" db:"category_id"`
 	CategoryName string `json:"name" validate:"required" db:"category_name"`
+}
+
+type GetProductResponse struct {
+	Name        string       `json:"name" db:"name"`
+	Description string       `json:"description" db:"description"`
+	Price       int          `json:"price" validate:"required" db:"price"`
+	Stock       int          `json:"stock" validate:"required" db:"stock"`
+	Category    CategoryItem `json:"category"`
 }
 
 type DeleteProductRequest struct {
