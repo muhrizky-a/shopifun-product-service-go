@@ -6,6 +6,7 @@ import (
 	"codebase-app/pkg/errmsg"
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
@@ -199,17 +200,177 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 		FROM products
 		WHERE
 			deleted_at IS NULL
-			AND shop_id = ?
-		LIMIT ? OFFSET ?
 	`
 
-	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query),
-		req.ShopId,
-		req.Paginate,
-		req.Paginate*(req.Page-1),
+	// Search and filter query
+	queries := []interface{}{}
+
+	/// Filter by Category Ids
+	/// Example: category_ids=08362b22-f51d-40b1-a16b-49af90d561d9,3b4da768-e480-4cbb-b7fe-8b229123b50a
+	if len(req.CategoryIds) > 0 {
+		CategoryIdList := strings.Split(req.CategoryIds, ",")
+		query += ` AND category_id IN (`
+
+		for i, categoryId := range CategoryIdList {
+			query += `?`
+			if i < len(CategoryIdList)-1 {
+				query += ` , `
+			}
+
+			queries = append(
+				queries,
+				categoryId,
+			)
+		}
+		query += `)`
+	}
+
+	/// Filter by Price Range
+	if req.MinPrice > 0 {
+		query += ` AND price >= ?`
+		queries = append(
+			queries,
+			req.MinPrice,
+		)
+	}
+	if req.MaxPrice > req.MinPrice {
+		query += ` AND price BETWEEN ? AND ?`
+		queries = append(
+			queries,
+			req.MinPrice, req.MaxPrice,
+		)
+	}
+
+	/// Filter by Keyword on either name or description
+	if len(req.Keyword) > 0 {
+		query += ` AND (
+			name ILIKE ?
+			OR
+		 	description ILIKE ?
+		)`
+		queries = append(
+			queries,
+			"%"+req.Keyword+"%",
+			"%"+req.Keyword+"%",
+		)
+	}
+
+	// Pagination query
+	query += ` LIMIT ? OFFSET ?`
+	queries = append(
+		queries,
+		req.Paginate, req.Paginate*(req.Page-1),
 	)
+
+	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query), queries...)
 	if err != nil {
 		log.Error().Err(err).Any("payload", req).Msg("repository::GetProducts - Failed to get products")
+		return nil, err
+	}
+
+	if len(data) > 0 {
+		resp.Meta.TotalData = data[0].TotalData
+	}
+
+	for _, d := range data {
+		resp.Items = append(resp.Items, d.ProductItem)
+	}
+
+	resp.Meta.CountTotalPage(req.Page, req.Paginate, resp.Meta.TotalData)
+
+	return resp, nil
+}
+
+func (r *productRepository) GetProductsByShopId(ctx context.Context, req *entity.ProductsByShopIdRequest) (*entity.ProductsResponse, error) {
+	type dao struct {
+		TotalData int `db:"total_data"`
+		entity.ProductItem
+	}
+
+	var (
+		resp = new(entity.ProductsResponse)
+		data = make([]dao, 0, req.Paginate)
+	)
+	resp.Items = make([]entity.ProductItem, 0, req.Paginate)
+
+	query := `
+		SELECT
+			COUNT(id) OVER() as total_data,
+			id,
+			name,
+			price,
+			stock
+		FROM products
+		WHERE
+			deleted_at IS NULL
+			AND shop_id = ?
+	`
+
+	// Search and filter query
+	queries := []interface{}{req.ShopId}
+
+	/// Filter by Category Ids
+	/// Example: category_ids=08362b22-f51d-40b1-a16b-49af90d561d9,3b4da768-e480-4cbb-b7fe-8b229123b50a
+	if len(req.CategoryIds) > 0 {
+		CategoryIdList := strings.Split(req.CategoryIds, ",")
+		query += ` AND category_id IN (`
+
+		for i, categoryId := range CategoryIdList {
+			query += `?`
+			if i < len(CategoryIdList)-1 {
+				query += ` , `
+			}
+
+			queries = append(
+				queries,
+				categoryId,
+			)
+		}
+		query += `)`
+	}
+
+	/// Filter by Price Range
+	if req.MinPrice > 0 {
+		query += ` AND price >= ?`
+		queries = append(
+			queries,
+			req.MinPrice,
+		)
+	}
+	if req.MaxPrice > req.MinPrice {
+		query += ` AND price BETWEEN ? AND ?`
+		queries = append(
+			queries,
+			req.MinPrice, req.MaxPrice,
+		)
+	}
+
+	/// Filter by Keyword on either name or description
+	if len(req.Keyword) > 0 {
+		query += ` AND (
+			name ILIKE ?
+			OR
+		 	description ILIKE ?
+		)`
+		queries = append(
+			queries,
+			"%"+req.Keyword+"%",
+			"%"+req.Keyword+"%",
+		)
+	}
+
+	// Pagination query
+	query += ` LIMIT ? OFFSET ?`
+	queries = append(
+		queries,
+		req.Paginate, req.Paginate*(req.Page-1),
+	)
+	log.Debug().Any("req", req).Msg("repository::GetProductsByShopId - req")
+	log.Debug().Any("query", query).Msg("repository::GetProductsByShopId - Failed to get products")
+	log.Debug().Any("queries", queries).Msg("repository::GetProductsByShopId - Failed to get products")
+	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query), queries...)
+	if err != nil {
+		log.Error().Err(err).Any("payload", req).Msg("repository::GetProductsByShopId - Failed to get products")
 		return nil, err
 	}
 

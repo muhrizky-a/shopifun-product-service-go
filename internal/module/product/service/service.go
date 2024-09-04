@@ -40,3 +40,6 @@ func (s *productService) UpdateProduct(ctx context.Context, req *entity.UpdatePr
 func (s *productService) GetProducts(ctx context.Context, req *entity.ProductsRequest) (*entity.ProductsResponse, error) {
 	return s.repo.GetProducts(ctx, req)
 }
+func (s *productService) GetProductsByShopId(ctx context.Context, req *entity.ProductsByShopIdRequest) (*entity.ProductsResponse, error) {
+	return s.repo.GetProductsByShopId(ctx, req)
+}

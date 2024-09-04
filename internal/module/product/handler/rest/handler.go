@@ -30,7 +30,8 @@ func NewProductHandler() *productHandler {
 }
 
 func (h *productHandler) Register(router fiber.Router) {
-	router.Get("/shops/:shop_id/products", h.GetProducts)
+	router.Get("/products", h.GetProducts)
+	router.Get("/shops/:shop_id/products", h.GetProductsByShopId)
 	router.Post("/products", middleware.UserIdHeader, h.CreateProduct)
 	router.Get("/products/:id", h.GetProduct)
 	router.Delete("/products/:id", middleware.UserIdHeader, h.DeleteProduct)
@@ -160,8 +161,6 @@ func (h *productHandler) UpdateProduct(c *fiber.Ctx) error {
 		return c.Status(code).JSON(response.Error(errs))
 	}
 
-	log.Warn().Msg(respExistingProduct.Id + ", userid:" + respExistingProduct.UserId + ", shopid:" + respExistingProduct.ShopId)
-
 	if respExistingProduct.UserId != OwnerId {
 		log.Warn().Err(err).Msg("handler::UpdateProduct - Unauthorized")
 		return c.Status(403).JSON(response.Error(
@@ -190,7 +189,6 @@ func (h *productHandler) GetProducts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response.Error(err))
 	}
 
-	req.ShopId = c.Params("shop_id")
 	req.SetDefault()
 
 	if err := v.Validate(req); err != nil {
@@ -206,5 +204,34 @@ func (h *productHandler) GetProducts(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response.Success(resp, ""))
+}
 
+func (h *productHandler) GetProductsByShopId(c *fiber.Ctx) error {
+	var (
+		req = new(entity.ProductsByShopIdRequest)
+		ctx = c.Context()
+		v   = adapter.Adapters.Validator
+	)
+
+	if err := c.QueryParser(req); err != nil {
+		log.Warn().Err(err).Msg("handler::GetProductsByShopId - Parse request query")
+		return c.Status(fiber.StatusBadRequest).JSON(response.Error(err))
+	}
+
+	req.ShopId = c.Params("shop_id")
+	req.SetDefault()
+
+	if err := v.Validate(req); err != nil {
+		log.Warn().Err(err).Any("payload", req).Msg("handler::GetProductsByShopId - Validate request body")
+		code, errs := errmsg.Errors(err, req)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	resp, err := h.service.GetProductsByShopId(ctx, req)
+	if err != nil {
+		code, errs := errmsg.Errors[error](err)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response.Success(resp, ""))
 }

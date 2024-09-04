@@ -66,10 +66,22 @@ type UpdateProductResponse struct {
 	Id string `json:"id" db:"id"`
 }
 
+type ProductsByShopIdRequest struct {
+	ShopId string `validate:"uuid" db:"shop_id"`
+	ProductsRequest
+}
+
 type ProductsRequest struct {
-	ShopId   string `validate:"uuid" db:"shop_id"`
-	Page     int    `query:"page" validate:"required"`
-	Paginate int    `query:"paginate" validate:"required"`
+	Page     int `query:"page" validate:"required"`
+	Paginate int `query:"paginate" validate:"required"`
+
+	//Filter
+	Keyword  string `query:"keyword"`
+	MinPrice int    `query:"min_price" validate:"gte=0"`
+	MaxPrice int    `query:"max_price" validate:"gte=0"`
+
+	/// Example: category_ids=08362b22-f51d-40b1-a16b-49af90d561d9,3b4da768-e480-4cbb-b7fe-8b229123b50a
+	CategoryIds string `query:"category_ids"`
 }
 
 func (r *ProductsRequest) SetDefault() {
@@ -80,6 +92,7 @@ func (r *ProductsRequest) SetDefault() {
 	if r.Paginate < 1 {
 		r.Paginate = 10
 	}
+
 }
 
 type ProductItem struct {
